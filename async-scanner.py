@@ -92,7 +92,7 @@ async def main(loop):
         task.cancel()
 
     await asyncio.gather(*tasks, return_exceptions=True)
-    print(f'Total elapsed: {total_slept_for}')
+    print(f'Total elapsed: {total_slept_for:.2f} seconds')
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
