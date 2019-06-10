@@ -49,7 +49,8 @@ def chunk_list(seq, size):
 
 async def run_ssh(ip, username, password):
     print(f'Trying {username}:{password} on {ip}..')
-    async with (await asyncio.wait_for(asyncssh.connect(ip, username=username, password=password, known_hosts=None), timeout=timeout)) as conn:
+    client = asyncssh.connect(ip, username=username, password=password, known_hosts=None)
+    async with (await asyncio.wait_for(client, timeout=timeout)) as conn:
         result = await conn.run('uptime', check=True)
         print(result.stdout)
 
@@ -95,7 +96,9 @@ async def main(loop):
     print(f'Total elapsed: {total_slept_for:.2f} seconds')
 
 if __name__ == '__main__':
+    description = 'Fully asynchronous SSH Scanner made in Python3.6'
     parser = argparse.ArgumentParser()
+    
     parser.add_argument('--range', '-r', type=str, required=True)
     parser.add_argument('--combo', '-c', type=str, required=True)
     parser.add_argument('--threads', type=int, default=300)
