@@ -31,6 +31,7 @@ import asyncio
 import argparse
 import asyncssh
 import ipaddress
+import contextlib
 
 from pathlib import Path
 
@@ -91,7 +92,7 @@ async def run_ssh(ip, username, password):
 
 async def port_worker(name, queue):
     check = await queue.get()
-    print(f'[{name}] [{len(check)}]')
+    print(f'[{name}] [{len(check)}] Working..')
     for c in check:
         fut = asyncio.open_connection(c, 22)
         try:
@@ -99,15 +100,21 @@ async def port_worker(name, queue):
         except Exception:
             pass
         else:
-            try:
-                data = await reader.read(1024)
-                if 'OpenSSH' in data.decode('utf8'):
-                    os.system(f'echo {c} >> {file}')
-            except Exception:
-                pass
-            else:
-                writer.close()
+            with contextlib.suppress(ConnectionResetError):
+                # endless ssh fix
+                data = await asyncio.wait_for(await reader.read(1024), timeout=timeout)
 
+                try:
+                    string = data.decode('utf-8')
+                except UnicodeDecodeError:
+                    string = data.decode('latin-1')
+
+                if 'OpenSSH' in string:
+                    os.system(f'echo {c} >> {file}')
+
+            writer.close()
+
+    print(f'[{name}] [{len(check)}] Finished working.')
     queue.task_done()
 
 async def brute_worker(name, queue):
@@ -141,8 +148,8 @@ async def main(loop):
     for r in chunk_ranges:
         queue.put_nowait(r)
 
-    for t in range(threads):
-        name = f'Task {t:>4}'
+    for t in range(1, threads+1):
+        name = f'Task {t:>{len(str(threads))}}'
         func = port_worker if port else brute_worker
         task = loop.create_task(func(name, queue))
         tasks.append(task)
